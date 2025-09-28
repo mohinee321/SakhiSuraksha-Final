@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';   // ✅ Added useRef import
 import { Play, Download, Smartphone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -98,6 +98,14 @@ const translations = {
 export function DemoSection({ language }: DemoSectionProps) {
   const t = translations[language as keyof typeof translations] || translations.en;
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const handlePlay = () => {
+    if (videoRef.current) {
+      videoRef.current.play();
+    }
+  };
+
   return (
     <div className="py-20 px-4 bg-gradient-to-r from-primary/5 to-accent/5">
       <div className="max-w-6xl mx-auto">
@@ -110,16 +118,19 @@ export function DemoSection({ language }: DemoSectionProps) {
             </div>
 
             <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-primary/10">
-              <ImageWithFallback
-                src="https://images.unsplash.com/photo-1663153203126-08bbadc178ad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxtb2JpbGUlMjBhcHAlMjBkZW1vbnN0cmF0aW9uJTIwaGFuZHMlMjBwaG9uZXxlbnwxfHx8fDE3NTg5MDk4MDZ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                alt="Mobile app demonstration"
+              <video
+                ref={videoRef}
+                src="\4738c506-7734-4802-a027-a1b3a24f5d91.MP4"   // 👉 replace with actual video path
                 className="w-full h-64 object-cover"
+                controls={false}
+                preload="metadata"
+                poster="https://images.unsplash.com/photo-1663153203126-08bbadc178ad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
               />
               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                 <Button
                   size="lg"
                   className="bg-white/90 text-primary hover:bg-white rounded-full w-16 h-16"
-                  onClick={() => alert('Demo video would play here')}
+                  onClick={handlePlay}
                 >
                   <Play className="w-8 h-8 ml-1" />
                 </Button>
@@ -129,7 +140,7 @@ export function DemoSection({ language }: DemoSectionProps) {
             <Button
               size="lg"
               className="bg-accent hover:bg-accent/90 text-white px-8"
-              onClick={() => alert('Demo video would play here')}
+              onClick={handlePlay}
             >
               <Play className="w-5 h-5 mr-2" />
               {t.watchDemo}
