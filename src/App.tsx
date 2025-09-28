@@ -1,241 +1,257 @@
-import React, { useRef, useState } from 'react';
-import { LanguageSelector } from './components/language-selector';
-import { AuthChoice } from './components/auth-choice';
-import { SMSHelper } from './components/sms-helper';
-import { FakeShoppingApp } from './components/fake-shopping-app';
-import { Navbar } from './components/navbar';
-import { HeroSection } from './components/hero-section';
-import { FeaturesSection } from './components/features-section';
-import { AuthForms } from './components/auth-forms';
-import { AboutSection } from './components/about-section';
-import { DemoSection } from './components/demo-section';
-import { ChatbotWidget } from './components/chatbot-widget';
-import { Footer } from './components/footer';
+import React, { useState, useEffect } from "react";
+import { LanguageSelector } from "./components/language-selector";
+import { AuthChoice } from "./components/auth-choice";
+import { SMSHelper } from "./components/sms-helper";
+import { FakeShoppingApp } from "./components/fake-shopping-app";
+import { Navbar } from "./components/navbar";
+import { HeroSection } from "./components/hero-section";
+import { FeaturesSection } from "./components/features-section";
+import { AuthForms } from "./components/auth-forms";
+import { AboutSection } from "./components/about-section";
+import { DemoSection } from "./components/demo-section";
+import { ChatbotWidget } from "./components/chatbot-widget";
+import { Footer } from "./components/footer";
 
-export default function App() {
-  const [currentView, setCurrentView] = useState<
-    'language' | 'authChoice' | 'auth' | 'sms' | 'home' | 'panic'
-  >('language');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-
-  // SOS states
-  const [sosPending, setSosPending] = useState(false);
-  const [sosCountdown, setSosCountdown] = useState(30);
-  const [sosSent, setSosSent] = useState(false);
-  const [listening, setListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-  const sosTimerRef = useRef<number | null>(null);
-  const sosLockRef = useRef(false);
-
-  // ------------------------
-  // SOS functions
-  // ------------------------
-  const startSOSConfirmation = () => {
-    if (sosLockRef.current) return;
-    sosLockRef.current = true;
-    setSosPending(true);
-    setSosSent(false);
-    setSosCountdown(30);
-
-    sosTimerRef.current = window.setInterval(() => {
-      setSosCountdown((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(sosTimerRef.current!);
-          sosTimerRef.current = null;
-          sendSOS();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const cancelSOS = () => {
-    if (sosTimerRef.current) {
-      window.clearInterval(sosTimerRef.current);
-      sosTimerRef.current = null;
-    }
-    setSosPending(false);
-    setSosCountdown(30);
-    setSosSent(false);
-    sosLockRef.current = false;
-  };
-
-  const sendSOS = () => {
-    setSosPending(false);
-    setSosSent(true);
-    setCurrentView('panic');
-
-    try {
-      setTimeout(() => {
-        window.location.href = 'tel:100';
-      }, 800);
-    } catch (err) {
-      console.error('Failed to open dialer', err);
-    }
-
-    sosLockRef.current = false;
-  };
-
-  // ------------------------
-  // Start voice recognition
-  // ------------------------
-  const startListening = () => {
-    if (listening) return;
-
+// 🔹 Voice Analysis Component
+function VoiceAnalysis({ onCodewordDetected }: { onCodewordDetected: () => void }) {
+  useEffect(() => {
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
-      alert('Your browser does not support voice recognition.');
+      console.warn("SpeechRecognition API not supported in this browser.");
       return;
     }
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = 'en-IN';
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
 
     recognition.onresult = (event: any) => {
-      const transcript =
-        event.results[event.results.length - 1][0].transcript
-          .trim()
-          .toLowerCase();
-      console.log('You said:', transcript);
-      if (transcript.includes('help') || transcript.includes('sakhi')) {
-        startSOSConfirmation();
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0].transcript)
+        .join("")
+        .toLowerCase();
+
+      const storedCodeword = localStorage.getItem("userCodeword") || "help";
+      if (transcript.includes(storedCodeword)) {
+        onCodewordDetected();
       }
     };
 
-    recognition.onerror = (event: any) =>
-      console.error('Speech recognition error:', event.error);
-
-    // Restart automatically if recognition stops (common on mobile)
-    recognition.onend = () => {
-      console.log('Recognition ended, restarting...');
-      try {
-        recognition.start();
-      } catch (err) {
-        console.error('Failed to restart recognition:', err);
-      }
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event);
     };
 
     recognition.start();
-    recognitionRef.current = recognition;
-    setListening(true);
-    alert("Voice SOS is now active! Say your codeword ('help' or 'sakhi').");
-  };
+    return () => recognition.stop();
+  }, [onCodewordDetected]);
 
-  // ------------------------
-  // Navigation logic
-  // ------------------------
-  if (currentView === 'language') {
+  return null;
+}
+
+// 🔹 SOS Countdown Component with flashing red background
+function SOSCountdown({
+  onCancel,
+  onTimeout,
+}: {
+  onCancel: () => void;
+  onTimeout: () => void;
+}) {
+  const [secondsLeft, setSecondsLeft] = useState(30);
+  const [flash, setFlash] = useState(false);
+
+  // Reset timer when component mounts
+  useEffect(() => {
+    setSecondsLeft(30);
+  }, []);
+
+  // Countdown
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      onTimeout();
+      return;
+    }
+    const timer = setTimeout(() => setSecondsLeft((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [secondsLeft, onTimeout]);
+
+  // Flashing background effect
+  useEffect(() => {
+    const interval = setInterval(() => setFlash((prev) => !prev), 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div
+      className={`fixed inset-0 flex flex-col items-center justify-center text-white z-50 transition-colors duration-500 ${
+        flash ? "bg-red-600" : "bg-red-800"
+      }`}
+    >
+      <h1 className="text-5xl font-bold mb-4 animate-pulse">🚨 SOS!</h1>
+      <p className="text-xl mb-2">Connecting to nearby police station...</p>
+      <p className="text-lg mb-4">Help is on the way! {secondsLeft} seconds remaining</p>
+      <button
+        onClick={onCancel}
+        className="bg-white text-red-600 font-bold px-6 py-3 rounded shadow hover:bg-gray-200"
+      >
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+export default function App() {
+  const [currentView, setCurrentView] = useState<
+    "language" | "authChoice" | "auth" | "sms" | "codeword" | "home" | "panic"
+  >("language");
+  const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [codeword, setCodeword] = useState("");
+  const [isSOS, setIsSOS] = useState(false);
+
+  // Step 1: Language selector
+  if (currentView === "language") {
     return (
       <LanguageSelector
         isOpen={true}
         onLanguageSelect={(language) => {
           setSelectedLanguage(language);
-          setCurrentView('authChoice');
+          setCurrentView("authChoice");
         }}
       />
     );
   }
 
-  if (currentView === 'sms') {
+  // Step 2: SMS Helper
+  if (currentView === "sms") {
     return (
       <SMSHelper
         language={selectedLanguage}
-        onBack={() => setCurrentView('authChoice')}
+        onBack={() => setCurrentView("authChoice")}
       />
     );
   }
 
-  if (currentView === 'authChoice') {
+  // Step 3: Auth Choice
+  if (currentView === "authChoice") {
     return (
       <AuthChoice
         language={selectedLanguage}
         onLogin={() => {
-          setAuthMode('login');
-          setCurrentView('auth');
+          setAuthMode("login");
+          setCurrentView("auth");
         }}
         onRegister={() => {
-          setAuthMode('register');
-          setCurrentView('auth');
+          setAuthMode("register");
+          setCurrentView("auth");
         }}
-        onSMS={() => setCurrentView('sms')}
+        onSMS={() => setCurrentView("sms")}
       />
     );
   }
 
-  if (currentView === 'auth') {
+  // Step 4: Auth Forms
+  if (currentView === "auth") {
     return (
       <div className="min-h-screen bg-background">
         <AuthForms
           language={selectedLanguage}
           isOpen={true}
           mode={authMode}
-          onClose={() => setCurrentView('authChoice')}
+          onClose={() => setCurrentView("authChoice")}
           onSwitchMode={setAuthMode}
-          onSuccess={() => setCurrentView('home')}
+          onSuccess={() => setCurrentView("codeword")}
           isInitialRegistration={false}
         />
       </div>
     );
   }
 
-  if (currentView === 'panic') {
-    return <FakeShoppingApp onExitPanic={() => setCurrentView('home')} />;
+  // Step 5: Codeword Setup
+  if (currentView === "codeword") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 text-black">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-96 flex flex-col items-center">
+          <h2 className="text-2xl font-bold mb-4 text-black">Choose Your Codeword</h2>
+          <input
+            type="text"
+            placeholder="Enter codeword"
+            value={codeword}
+            onChange={(e) => setCodeword(e.target.value)}
+            className="border p-2 rounded mb-4 text-black w-full"
+          />
+          <button
+            onClick={() => {
+              if (codeword.trim() !== "") {
+                localStorage.setItem("userCodeword", codeword.toLowerCase());
+                setCurrentView("home");
+              }
+            }}
+            className="bg-gray-200 text-black px-4 py-2 rounded shadow hover:bg-gray-300 w-full"
+          >
+            Enter
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  // ------------------------
-  // Home view
-  // ------------------------
-  const handleLogin = () => {
-    setAuthMode('login');
-    setCurrentView('auth');
-  };
-  const handleRegister = () => {
-    setAuthMode('register');
-    setCurrentView('auth');
-  };
-  const handleChangeLanguage = () => {
-    setCurrentView('language');
-    setSelectedLanguage('');
-  };
-  const handleGetHelp = () => startSOSConfirmation();
+  // Step 6: Panic Mode (Fake Shopping App)
+  if (currentView === "panic") {
+    return <FakeShoppingApp onExitPanic={() => setCurrentView("home")} />;
+  }
 
+  // Step 7: Home Page
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background">
+      {/* Voice Analysis Always Running */}
+      <VoiceAnalysis onCodewordDetected={() => setIsSOS(true)} />
+
+      {/* SOS Overlay */}
+      {isSOS && (
+        <SOSCountdown
+          onCancel={() => setIsSOS(false)}
+          onTimeout={() => {
+            setIsSOS(false);
+            setCurrentView("panic"); // open FakeShoppingApp
+          }}
+        />
+      )}
+
       {/* Navbar */}
       <Navbar
         language={selectedLanguage}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-        onPanicMode={startSOSConfirmation}
-        onChangeLanguage={handleChangeLanguage}
+        onLogin={() => {
+          setAuthMode("login");
+          setCurrentView("auth");
+        }}
+        onRegister={() => {
+          setAuthMode("register");
+          setCurrentView("auth");
+        }}
+        onPanicMode={() => setCurrentView("panic")}
+        onChangeLanguage={() => {
+          setCurrentView("language");
+          setSelectedLanguage("");
+        }}
       />
 
-      {/* Voice Activation Button */}
-      {!listening && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <button
-            onClick={startListening}
-            className="px-4 py-3 bg-orange-700 text-white font-bold rounded-full shadow-lg"
-          >
-            Activate Voice SOS
-          </button>
-        </div>
-      )}
-
-      {/* Main content */}
+      {/* Main Content */}
       <main>
         <HeroSection
           language={selectedLanguage}
-          onGetHelp={handleGetHelp}
-          onLogin={handleLogin}
-          onRegister={handleRegister}
-          onPanicMode={startSOSConfirmation}
+          onGetHelp={() => setIsSOS(true)} // 🔥 replaced alert
+          onLogin={() => {
+            setAuthMode("login");
+            setCurrentView("auth");
+          }}
+          onRegister={() => {
+            setAuthMode("register");
+            setCurrentView("auth");
+          }}
+          onPanicMode={() => setCurrentView("panic")}
         />
 
         <section id="features">
@@ -251,71 +267,8 @@ export default function App() {
         </section>
       </main>
 
-      {/* Footer */}
       <Footer language={selectedLanguage} />
-
-      {/* Chatbot */}
       <ChatbotWidget language={selectedLanguage} />
-
-      {/* SOS Overlay */}
-      {(sosPending || sosSent) && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-6">
-          <div className="w-full max-w-md rounded-lg overflow-hidden shadow-2xl">
-            <div className="bg-red-700 p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="bg-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-red-700">
-                  SOS
-                </div>
-                <div>
-                  <div className="text-white font-bold text-lg">
-                    {sosSent ? 'SOS Sent' : 'Emergency Detected'}
-                  </div>
-                  <div className="text-red-100 text-sm">
-                    {sosSent
-                      ? 'Connecting to police...'
-                      : `Connecting to police in ${sosCountdown}s`}
-                  </div>
-                </div>
-              </div>
-
-              {!sosSent && (
-                <button
-                  onClick={cancelSOS}
-                  className="bg-white text-red-700 font-semibold px-3 py-1 rounded-md"
-                  aria-label="Cancel SOS"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-
-            <div className="bg-white p-4">
-              {!sosSent ? (
-                <>
-                  <p className="text-sm text-gray-700 mb-2">
-                    We detected your codeword. If this was accidental, press{' '}
-                    <strong>Cancel</strong> within 30 seconds.
-                  </p>
-                  <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
-                    <div
-                      className="h-3 bg-red-500"
-                      style={{
-                        width: `${((30 - sosCountdown) / 30) * 100}%`,
-                        transition: 'width 0.4s linear',
-                      }}
-                    />
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-gray-700">
-                  SOS is being sent. Fake shopping panic UI is active and dialer
-                  opened.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
