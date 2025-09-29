@@ -120,7 +120,7 @@ export function DemoSection({ language }: DemoSectionProps) {
             <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-primary/10">
               <video
                 ref={videoRef}
-                src="\4738c506-7734-4802-a027-a1b3a24f5d91.MP4"   // 👉 replace with actual video path
+                src="\4738c506-7734-4802-a027-c:\Users\Mohinee\Downloads\4738c506-7734-4802-a027-a1b3a24f5d91.MP4a1b3a24f5d91.MP4"   // 👉 replace with actual video path
                 className="w-full h-64 object-cover"
                 controls={false}
                 preload="metadata"

@@ -30,7 +30,7 @@ function VoiceAnalysis({ onCodewordDetected }: { onCodewordDetected: () => void 
 
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
+        .map((result) => (result as SpeechRecognitionResult)[0].transcript)
         .join("")
         .toLowerCase();
 
@@ -45,13 +45,14 @@ function VoiceAnalysis({ onCodewordDetected }: { onCodewordDetected: () => void 
     };
 
     recognition.start();
+
     return () => recognition.stop();
   }, [onCodewordDetected]);
 
   return null;
 }
 
-// 🔹 SOS Countdown Component with flashing red background
+// 🔹 SOS Countdown Component
 function SOSCountdown({
   onCancel,
   onTimeout,
@@ -60,14 +61,7 @@ function SOSCountdown({
   onTimeout: () => void;
 }) {
   const [secondsLeft, setSecondsLeft] = useState(30);
-  const [flash, setFlash] = useState(false);
 
-  // Reset timer when component mounts
-  useEffect(() => {
-    setSecondsLeft(30);
-  }, []);
-
-  // Countdown
   useEffect(() => {
     if (secondsLeft <= 0) {
       onTimeout();
@@ -77,21 +71,12 @@ function SOSCountdown({
     return () => clearTimeout(timer);
   }, [secondsLeft, onTimeout]);
 
-  // Flashing background effect
-  useEffect(() => {
-    const interval = setInterval(() => setFlash((prev) => !prev), 500);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <div
-      className={`fixed inset-0 flex flex-col items-center justify-center text-white z-50 transition-colors duration-500 ${
-        flash ? "bg-red-600" : "bg-red-800"
-      }`}
-    >
-      <h1 className="text-5xl font-bold mb-4 animate-pulse">🚨 SOS!</h1>
-      <p className="text-xl mb-2">Connecting to nearby police station...</p>
-      <p className="text-lg mb-4">Help is on the way! {secondsLeft} seconds remaining</p>
+    <div className="fixed inset-0 bg-red-600 flex flex-col items-center justify-center text-white z-50">
+      <h1 className="text-5xl font-bold mb-4">SOS!</h1>
+      <p className="text-xl mb-4">
+        Connecting to emergency services in {secondsLeft} seconds
+      </p>
       <button
         onClick={onCancel}
         className="bg-white text-red-600 font-bold px-6 py-3 rounded shadow hover:bg-gray-200"
@@ -102,12 +87,45 @@ function SOSCountdown({
   );
 }
 
+// 🔹 Get Location
+const getLocation = () =>
+  new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject("Geolocation not supported");
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => reject(err)
+    );
+  });
+
+const sendSOS = async () => {
+  try {
+    const location = await getLocation();
+
+    await fetch("http://localhost:5000/sos", { // replace with deployed URL later
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Tanvi",
+        location,
+        contacts: [
+          { number: "+919812345678" }, // emergency contact
+          { number: "+919876543210" }  // add more if needed
+        ]
+      })
+    });
+
+    alert("SOS Sent via SMS!");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to send SOS");
+  }
+};
+
 export default function App() {
-  const [currentView, setCurrentView] = useState<
-    "language" | "authChoice" | "auth" | "sms" | "codeword" | "home" | "panic"
-  >("language");
+  const [currentView, setCurrentView] = useState("language");
   const [selectedLanguage, setSelectedLanguage] = useState("");
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authMode, setAuthMode] = useState<'login' | 'register'>("login");
   const [codeword, setCodeword] = useState("");
   const [isSOS, setIsSOS] = useState(false);
 
@@ -174,7 +192,9 @@ export default function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 text-black">
         <div className="bg-white p-6 rounded-lg shadow-lg w-96 flex flex-col items-center">
-          <h2 className="text-2xl font-bold mb-4 text-black">Choose Your Codeword</h2>
+          <h2 className="text-2xl font-bold mb-4 text-black">
+            Choose Your Codeword
+          </h2>
           <input
             type="text"
             placeholder="Enter codeword"
@@ -198,7 +218,7 @@ export default function App() {
     );
   }
 
-  // Step 6: Panic Mode (Fake Shopping App)
+  // Step 6: Panic Mode
   if (currentView === "panic") {
     return <FakeShoppingApp onExitPanic={() => setCurrentView("home")} />;
   }
@@ -215,7 +235,8 @@ export default function App() {
           onCancel={() => setIsSOS(false)}
           onTimeout={() => {
             setIsSOS(false);
-            setCurrentView("panic"); // open FakeShoppingApp
+            sendSOS(); // ✅ actually trigger SOS
+            setCurrentView("panic");
           }}
         />
       )}
@@ -242,7 +263,7 @@ export default function App() {
       <main>
         <HeroSection
           language={selectedLanguage}
-          onGetHelp={() => setIsSOS(true)} // 🔥 replaced alert
+          onGetHelp={() => sendSOS()}
           onLogin={() => {
             setAuthMode("login");
             setCurrentView("auth");
