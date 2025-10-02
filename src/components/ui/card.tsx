@@ -1,19 +1,19 @@
 import * as React from "react";
 
-import { cn } from "./utils";
+import { cn } from "./utils.js";
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card"
-      className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+// function Card({ className, ...props }: React.ComponentProps<"div">) {
+//   return (
+//     <div
+//       data-slot="card"
+//       className={cn(
+//         "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border",
+//         className,
+//       )}
+//       {...props}
+//     />
+//   );
+// }
 
 function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -80,6 +80,43 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     />
   );
 }
+
+
+
+// interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+//   className?: string;
+// }
+
+// कार्ड-फलकं रचयति (Creates the card panel)
+// export const Card: React.FC<CardProps> = ({ className = '', children, ...props }) => {
+//   const defaultClasses = 'rounded-xl border bg-card text-card-foreground shadow-sm';
+//   const finalClasses = `${defaultClasses} ${className}`;
+
+//   return (
+//     <div className={finalClasses} {...props}>
+//       {children}
+//     </div>
+//   );
+// };
+
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string;
+}
+
+const Card: React.FC<CardProps> = ({ className = '', children, ...props }) => {
+  const defaultClasses = 'rounded-xl border bg-card text-card-foreground shadow-sm';
+  const finalClasses = `${defaultClasses} ${className}`;
+
+  return (
+    <div className={finalClasses} {...props}>
+      {children}
+    </div>
+  );
+};
+
+
+
+
 
 export {
   Card,
