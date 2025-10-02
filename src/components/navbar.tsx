@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Menu, X, AlertTriangle, User, UserPlus, Globe } from 'lucide-react';
+import { Shield, Menu, X, AlertTriangle, User, UserPlus, Globe, Phone } from 'lucide-react';
 import { Button } from './ui/button';
 import { useState } from 'react';
 
@@ -9,6 +9,7 @@ interface NavbarProps {
   onRegister: () => void;
   onPanicMode: () => void;
   onChangeLanguage: () => void;
+  onEmergencyContacts?: () => void;
 }
 
 const translations = {
@@ -23,7 +24,8 @@ const translations = {
     help: "Get Help",
     about: "About",
     features: "Features",
-    download: "Download"
+    download: "Download",
+    contacts: "Emergency Contacts"
   },
   hi: {
     brand: "सखी सुरक्षा",
@@ -36,7 +38,8 @@ const translations = {
     help: "मदद पाएं",
     about: "हमारे बारे में",
     features: "विशेषताएं",
-    download: "डाउनलोड करें"
+    download: "डाउनलोड करें",
+    contacts: "आपातकालीन संपर्क"
   },
   ta: {
     brand: "சகி சுரக்ஷா",
@@ -49,7 +52,8 @@ const translations = {
     help: "உதவி பெறுங்கள்",
     about: "எங்களைப் பற்றி",
     features: "அம்சங்கள்",
-    download: "பதிவிறக்கம்"
+    download: "பதிவிறக்கம்",
+    contacts: "அவசரகால தொடர்புகள்"
   },
   bn: {
     brand: "সখী সুরক্ষা",
@@ -62,7 +66,8 @@ const translations = {
     help: "সাহায্য নিন",
     about: "আমাদের সম্পর্কে",
     features: "বৈশিষ্ট্য",
-    download: "ডাউনলোড"
+    download: "ডাউনলোড",
+    contacts: "জরুরি যোগাযোগ"
   },
   mr: {
     brand: "सखी सुरक्षा",
@@ -75,7 +80,8 @@ const translations = {
     help: "मदत घ्या",
     about: "आमच्याबद्दल",
     features: "वैशिष्ट्ये",
-    download: "डाउनलोड करा"
+    download: "डाउनलोड करा",
+    contacts: "आपत्कालीन संपर्क"
   },
   gu: {
     brand: "સખી સુરક્ષા",
@@ -88,11 +94,12 @@ const translations = {
     help: "મદદ મેળવો",
     about: "અમારા વિશે",
     features: "સુવિધાઓ",
-    download: "ડાઉનલોડ કરો"
+    download: "ડાઉનલોડ કરો",
+    contacts: "કટોકટી સંપર્કો"
   }
 };
 
-export function Navbar({ language, onLogin, onRegister, onPanicMode, onChangeLanguage }: NavbarProps) {
+export function Navbar({ language, onLogin, onRegister, onPanicMode, onChangeLanguage, onEmergencyContacts }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const t = translations[language as keyof typeof translations] || translations.en;
 
@@ -100,6 +107,13 @@ export function Navbar({ language, onLogin, onRegister, onPanicMode, onChangeLan
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleEmergencyContacts = () => {
+    if (onEmergencyContacts) {
+      onEmergencyContacts();
     }
     setIsMobileMenuOpen(false);
   };
@@ -118,6 +132,15 @@ export function Navbar({ language, onLogin, onRegister, onPanicMode, onChangeLan
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
+            {onEmergencyContacts && (
+              <button 
+                onClick={handleEmergencyContacts}
+                className="text-destructive hover:text-destructive/80 transition-colors flex items-center gap-1"
+              >
+                <Phone className="w-4 h-4" />
+                {t.contacts}
+              </button>
+            )}
             <button 
               onClick={() => scrollToSection('features')}
               className="text-muted-foreground hover:text-primary transition-colors"
@@ -206,6 +229,15 @@ export function Navbar({ language, onLogin, onRegister, onPanicMode, onChangeLan
 
             {/* Navigation Links */}
             <div className="space-y-2">
+              {onEmergencyContacts && (
+                <button 
+                  onClick={handleEmergencyContacts}
+                  className="flex items-center gap-2 w-full text-left py-2 text-destructive hover:text-destructive/80 transition-colors"
+                >
+                  <Phone className="w-4 h-4" />
+                  {t.contacts}
+                </button>
+              )}
               <button 
                 onClick={() => scrollToSection('features')}
                 className="block w-full text-left py-2 text-muted-foreground hover:text-primary transition-colors"
